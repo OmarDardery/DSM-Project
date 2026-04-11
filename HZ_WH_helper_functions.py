@@ -29,6 +29,8 @@ so it won't run until you move it there.
 
 Fetching can take 10-30 minutes depending on API server load.
 
+This function is written by agentic AI
+
 """
 
 
