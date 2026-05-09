@@ -279,63 +279,92 @@ if df is not None:
     st.divider()
 
     # --- 8. INTERACTIVE DATA DISCOVERY ---
-    st.markdown('<p class="sub-title">📊 Interactive Data Discovery</p>', unsafe_allow_html=True)
+    # Section for user-driven data discovery and custom chart building
+    st.markdown('<p class="sub-title">📊 Advanced Interactive Data Explorer</p>', unsafe_allow_html=True)
+    st.markdown("Customize your analysis by mixing variables, chart types, and color groupings from the cleaned dataset.")
 
-    options_map = {
-        'Victim Age':    'victim_age',
-        'Hour of Day':   'hour',
-        'Area ID':       'area_id',
-        'Victim Gender': 'victim_sex',
-        'Crime Group':   'crime_group',
-        'Time Period':   'time_period',
-        'Arrest Made':   'arrest_made',
-        'Month':         'month',
+    # Categorize columns by data type for better selection control
+    num_cols_dv = df.select_dtypes(include='number').columns.tolist()
+    cat_cols_dv = df.select_dtypes(include='object').columns.tolist()
+    all_cols_dv = num_cols_dv + cat_cols_dv
+
+    # Mapping technical database column names to user-friendly display labels
+    friendly_dv = {
+        'victim_age': 'Victim Age', 'hour': 'Hour of Day', 'area_id': 'Area ID',
+        'time_occurred': 'Time Occurred', 'month': 'Month',
+        'victim_sex': 'Victim Gender', 'crime_group': 'Crime Group',
+        'time_period': 'Time Period', 'arrest_made': 'Arrest Made',
+        'location': 'Division', 'premise_description': 'Premise',
+        'weapon_description': 'Weapon', 'victim_ethnicity': 'Ethnicity',
+        'day_of_week': 'Day of Week',
     }
-    available = {k: v for k, v in options_map.items() if v in df.columns}
-    display_list = list(available.keys())
+    
+    # Filter available columns and create a list for the dropdown menus
+    avail_dv = {friendly_dv.get(c, c): c for c in all_cols_dv if c in df.columns}
+    avail_dv_list = sorted(list(avail_dv.keys()))
 
-    c1, c2, c3 = st.columns([2, 2, 1])
-    with c1:
-        x_choice = st.selectbox("🎯 Select Variable (X-Axis):", options=display_list, index=0)
-    with c2:
-        y_choice = st.selectbox("🎯 Select Variable (Y-Axis):", options=display_list,
-                                index=min(1, len(display_list) - 1))
-    with c3:
-        chart_style = st.radio("📈 Graph Style:", options=["Scatter Plot", "Distribution View"])
+    # UI Layout: Create 4 columns for interactive widgets/controls
+    dv_c1, dv_c2, dv_c3, dv_c4 = st.columns([2, 2, 2, 1.5])
 
-    x_col = available[x_choice]
-    y_col = available[y_choice]
+    with dv_c1:
+        # Dropdown for X-Axis selection
+        dv_x = st.selectbox("🎯 X-Axis (Variable):", avail_dv_list, 
+                            index=avail_dv_list.index('Victim Age') if 'Victim Age' in avail_dv_list else 0)
+    with dv_c2:
+        # Dropdown for Y-Axis selection
+        dv_y = st.selectbox("🎯 Y-Axis (Variable):", avail_dv_list, 
+                            index=avail_dv_list.index('Hour of Day') if 'Hour of Day' in avail_dv_list else 1)
+    with dv_c3:
+        # Dropdown for optional color grouping (Legend)
+        color_options = ["None"] + avail_dv_list
+        dv_color = st.selectbox("🎨 Colour By:", color_options, index=0)
+    with dv_c4:
+        # Radio buttons to choose the preferred visualization style
+        dv_chart = st.radio("📈 Chart Type:", ["Bar", "Scatter", "Histogram", "Box", "Line"])
 
-    if chart_style == "Scatter Plot":
-        # Sampling prevents browser crash on 424k+ points
-        sample_df = df.sample(min(1500, len(df)))
-        fig = px.scatter(
-            sample_df, x=x_col, y=y_col, color=y_col,
-            labels={x_col: x_choice, y_col: y_choice},
-            template="plotly_white", color_continuous_scale="Reds",
-            title=f"{x_choice} vs {y_choice} (Sampled 1,500 points)"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        col_left, col_right = st.columns(2)
-        with col_left:
-            st.plotly_chart(
-                px.histogram(df, x=x_col, labels={x_col: x_choice},
-                             template="plotly_white", color_discrete_sequence=['#1E3A8A'],
-                             title=f"Distribution of {x_choice}"),
-                use_container_width=True
-            )
-        with col_right:
-            # Average Y by X to show trends
-            bar_data = df.groupby(x_col).size().reset_index(name='Count')
-            st.plotly_chart(
-                px.bar(bar_data, x=x_col, y='Count',
-                       labels={x_col: x_choice, 'Count': 'Incident Count'},
-                       template="plotly_white", color='Count',
-                       color_continuous_scale='Reds',
-                       title=f"Incident Count by {x_choice}"),
-                use_container_width=True
-            )
+    # Retrieve actual dataframe column names based on user friendly-selection
+    x_raw = avail_dv[dv_x]
+    y_raw = avail_dv[dv_y]
+    color_raw = avail_dv[dv_color] if dv_color != "None" else None
+
+    # Chart Generation Logic based on user choice
+    if dv_chart == "Scatter":
+        # Random sampling to optimize browser performance (prevents lag with large datasets)
+        sample_df = df.sample(min(5000, len(df)))
+        fig_dv = px.scatter(sample_df, x=x_raw, y=y_raw, color=color_raw,
+                            labels={x_raw: dv_x, y_raw: dv_y},
+                            template="plotly_white", color_continuous_scale="Reds",
+                            title=f"{dv_x} vs {dv_y} (Sampled 5k points)")
+    
+    elif dv_chart == "Histogram":
+        # Visualizing frequency distribution of a single variable
+        fig_dv = px.histogram(df, x=x_raw, color=color_raw,
+                              labels={x_raw: dv_x},
+                              template="plotly_white", color_discrete_sequence=['#1E3A8A'],
+                              title=f"Distribution of {dv_x}")
+    
+    elif dv_chart == "Box":
+        # Box plot for statistical distribution and outlier detection
+        fig_dv = px.box(df.sample(min(10000, len(df))), x=x_raw, y=y_raw, color=color_raw,
+                        template="plotly_white", title=f"{dv_y} by {dv_x}")
+    
+    elif dv_chart == "Line":
+        # Line chart showing volume trends based on the selected X-axis
+        line_data = df.groupby(x_raw).size().reset_index(name="Count")
+        fig_dv = px.line(line_data, x=x_raw, y="Count", markers=True,
+                         template="plotly_white", title=f"Incident Count over {dv_x}")
+    
+    else:  # Bar Chart (Default)
+        # Aggregating data to show total counts per category
+        bar_agg = df.groupby(x_raw).size().reset_index(name="Count")
+        fig_dv = px.bar(bar_agg, x=x_raw, y="Count", 
+                        color="Count" if color_raw is None else None,
+                        color_continuous_scale="Reds",
+                        template="plotly_white", title=f"Incident Count by {dv_x}")
+
+    # Display the final generated chart with dynamic width adjustment
+    st.plotly_chart(fig_dv, use_container_width=True)
+    st.caption(f"Visualizing data from {len(df):,} cleaned records.")
 
     # --- 9. MODEL RESULTS SUMMARY ---
     st.divider()
@@ -616,88 +645,6 @@ if df is not None:
         "logical date order (date_occurred ≤ date_reported), and filled missing optional fields."
     )
 
-    st.divider()
-
-    # --- 13. DYNAMIC VISUALIZATION AREA ---
-    st.markdown('<p class="sub-title">📊 Dynamic Visualization Area</p>', unsafe_allow_html=True)
-    st.markdown("Build any chart on-the-fly from the cleaned dataset. Mix any variable, chart type, and optional colour grouping.")
-
-    dv_c1, dv_c2, dv_c3, dv_c4 = st.columns([2, 2, 2, 1])
-
-    num_cols_dv  = df.select_dtypes(include='number').columns.tolist()
-    cat_cols_dv  = df.select_dtypes(include='object').columns.tolist()
-    all_cols_dv  = num_cols_dv + cat_cols_dv
-
-    friendly_dv = {
-        'victim_age': 'Victim Age', 'hour': 'Hour of Day', 'area_id': 'Area ID',
-        'time_occurred': 'Time Occurred', 'month': 'Month',
-        'victim_sex': 'Victim Gender', 'crime_group': 'Crime Group',
-        'time_period': 'Time Period', 'arrest_made': 'Arrest Made',
-        'location': 'Division', 'premise_description': 'Premise',
-        'weapon_description': 'Weapon', 'victim_ethnicity': 'Ethnicity',
-        'day_of_week': 'Day of Week',
-    }
-    avail_dv = {friendly_dv.get(c, c): c for c in all_cols_dv if c in df.columns}
-    avail_dv_list = list(avail_dv.keys())
-
-    with dv_c1:
-        dv_x = st.selectbox("X-Axis:", avail_dv_list,
-                             index=avail_dv_list.index('Victim Age') if 'Victim Age' in avail_dv_list else 0,
-                             key="dv_x")
-    with dv_c2:
-        dv_y = st.selectbox("Y-Axis:", avail_dv_list,
-                             index=avail_dv_list.index('Hour of Day') if 'Hour of Day' in avail_dv_list else 1,
-                             key="dv_y")
-    with dv_c3:
-        color_options = ["None"] + avail_dv_list
-        dv_color = st.selectbox("Colour By (optional):", color_options,
-                                index=color_options.index('Arrest Made') if 'Arrest Made' in color_options else 0,
-                                key="dv_color")
-    with dv_c4:
-        dv_chart = st.radio("Chart:", ["Bar", "Scatter", "Histogram", "Box", "Line"], key="dv_chart")
-
-    x_raw     = avail_dv[dv_x]
-    y_raw     = avail_dv[dv_y]
-    color_raw = avail_dv[dv_color] if dv_color != "None" else None
-
-    dv_sample = df.sample(min(5000, len(df)), random_state=42) if dv_chart == "Scatter" else df
-
-    if dv_chart == "Scatter":
-        fig_dv = px.scatter(dv_sample, x=x_raw, y=y_raw, color=color_raw,
-                            labels={x_raw: dv_x, y_raw: dv_y},
-                            template="plotly_white", color_continuous_scale="Reds",
-                            title=f"{dv_x} vs {dv_y} (Sampled 5k)")
-    elif dv_chart == "Histogram":
-        fig_dv = px.histogram(dv_sample, x=x_raw, color=color_raw,
-                              labels={x_raw: dv_x},
-                              template="plotly_white",
-                              title=f"Distribution of {dv_x}")
-    elif dv_chart == "Box":
-        fig_dv = px.box(df.sample(min(10_000, len(df)), random_state=42),
-                        x=x_raw, y=y_raw, color=color_raw,
-                        labels={x_raw: dv_x, y_raw: dv_y},
-                        template="plotly_white",
-                        title=f"{dv_y} by {dv_x}")
-    elif dv_chart == "Line":
-        line_data = df.groupby(x_raw)[y_raw].count().reset_index(name="Count")
-        fig_dv = px.line(line_data, x=x_raw, y="Count",
-                         labels={x_raw: dv_x, "Count": "Incident Count"},
-                         template="plotly_white",
-                         title=f"Incident Count over {dv_x}")
-    else:  # Bar
-        bar_agg = df.groupby(x_raw).size().reset_index(name="Count")
-        fig_dv = px.bar(bar_agg, x=x_raw, y="Count",
-                        color="Count" if color_raw is None else None,
-                        color_discrete_sequence=["#1E3A8A"],
-                        color_continuous_scale="Reds",
-                        labels={x_raw: dv_x, "Count": "Incident Count"},
-                        template="plotly_white",
-                        title=f"Incident Count by {dv_x}",
-                        text_auto=',d')
-
-    fig_dv.update_layout(height=460, margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig_dv, use_container_width=True)
-    st.caption(f"Chart built from {cleaned_count:,} cleaned records. Scatter plots are sampled to 5,000 points for performance.")
 
     # --- 14. CONCLUSIONS ---
     st.divider()
