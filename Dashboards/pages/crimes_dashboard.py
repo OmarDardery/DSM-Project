@@ -138,7 +138,7 @@ if df is not None:
            trained purely as comparison baselines.
         4. **Rigorous Validation** — Apply stratified 5-fold cross-validation, learning curve analysis,
            confusion matrices, and ROC curve analysis for a full performance picture.
-        5. **Crime Type Classification (Bonus Task)** — Build a multi-class holiday-aware classifier to predict
+        5. **Crime Type Classification** — Build a multi-class holiday-aware classifier to predict
            crime group from contextual features and diagnose its structural limitations through root cause analysis.
         6. **Real-World Interpretation** — Translate all results into actionable recommendations for
            patrol scheduling and resource allocation.
@@ -376,6 +376,155 @@ if df is not None:
     )
 
     st.divider()
+
+        # --- 9.5 HOLIDAY CRIME TYPE CLASSIFIER ANALYSIS ---
+    st.divider()
+    st.markdown('<p class="sub-title">🎄 Why the Holiday Crime Type Classifier Performed Poorly</p>', unsafe_allow_html=True)
+
+    st.warning("""
+    The **Holiday Crime Type Classifier** attempted to predict which of the 6 crime groups would occur
+    using contextual features such as:
+    
+    - Time of occurrence
+    - Victim age
+    - Victim gender
+    - Holiday indicators (`holiday_name`, `is_holiday`)
+    
+    Unlike the arrest prediction model, this classifier achieved only **23.71% accuracy**
+    (compared to a random baseline of 16.7%).
+    """)
+
+    # Root cause metrics
+    root_causes = pd.DataFrame({
+        "Problem": [
+            "Extreme Class Imbalance",
+            "Sparse Holiday Data",
+            "Weak Feature Signal"
+        ],
+        "Severity Score": [51.8, 5, 1]
+    })
+
+    fig_root = px.bar(
+        root_causes,
+        x="Problem",
+        y="Severity Score",
+        color="Severity Score",
+        color_continuous_scale="Reds",
+        template="plotly_white",
+        text_auto=".1f",
+        title="Root Causes Behind Poor Holiday Classifier Performance"
+    )
+
+    fig_root.update_layout(
+        height=420,
+        margin=dict(l=20, r=20, t=50, b=20),
+        coloraxis_showscale=False
+    )
+
+    st.plotly_chart(fig_root, use_container_width=True)
+
+    # Detailed explanation
+    exp1, exp2, exp3 = st.columns(3)
+
+    with exp1:
+        st.error("""
+        ### ① Extreme Class Imbalance
+        
+        Burglary had over **149k incidents** while
+        Homicide & Sexual Assault had only **2.8k**.
+        
+        This creates a **51.8 : 1 imbalance ratio**.
+        
+        The model therefore learns the majority
+        classes far more effectively than the rare ones.
+        """)
+
+    with exp2:
+        st.warning("""
+        ### ② Sparse Holiday Data
+        
+        Most rows were NOT holidays.
+        
+        Holiday-related incidents represented
+        only a tiny fraction of the dataset.
+        
+        Many holiday/crime combinations appeared
+        only a few dozen times — far too little
+        for stable learning.
+        """)
+
+    with exp3:
+        st.info("""
+        ### ③ Weak Predictive Features
+        
+        The selected features simply do not contain
+        enough information to accurately determine
+        crime category.
+        
+        Missing high-signal features include:
+        
+        - Weapon type
+        - Premise/location type
+        - Area/division
+        - Suspect information
+        """)
+
+    st.markdown("### 📉 Per-Class Performance")
+
+    holiday_results = pd.DataFrame({
+        "Crime Group": [
+            "Burglary",
+            "Homicide & Sexual Assault",
+            "Robbery & Agg. Assault",
+            "Simple Assault & Battery",
+            "Theft",
+            "Vandalism / Fraud / Other"
+        ],
+        "F1-Score": [0.34, 0.04, 0.21, 0.22, 0.19, 0.21]
+    })
+
+    fig_f1 = px.bar(
+        holiday_results,
+        x="Crime Group",
+        y="F1-Score",
+        color="F1-Score",
+        color_continuous_scale="Blues",
+        template="plotly_white",
+        text_auto=".2f",
+        title="Holiday Classifier F1-Score by Crime Group"
+    )
+
+    fig_f1.update_layout(
+        height=420,
+        margin=dict(l=20, r=20, t=50, b=20),
+        xaxis_tickangle=-15,
+        coloraxis_showscale=False
+    )
+
+    st.plotly_chart(fig_f1, use_container_width=True)
+
+    st.caption(
+        "The classifier performed inconsistently across crime categories. "
+        "Rare classes such as Homicide & Sexual Assault achieved extremely low precision and F1-scores "
+        "because the model generated many false positives. "
+        "Even the best-performing class (Burglary) achieved only 0.34 F1-score, confirming that "
+        "holiday information and basic demographics alone are insufficient for reliable crime type prediction."
+    )
+
+    st.success("""
+    ### Final Interpretation
+    
+    Despite the low accuracy, the model was still valuable analytically.
+    
+    It proved that:
+    
+    - Crime type prediction is significantly harder than arrest prediction.
+    - Holiday-related features carry almost no predictive power.
+    - Temporal and demographic information alone cannot reliably distinguish crime categories.
+    
+    Most importantly, the experiment identified WHICH missing features are likely necessary
+    for future improvement — especially weapon type, premise type, and geographic information.
+    """)
 
     # --- 10. FEATURE IMPORTANCE ---
     st.markdown('<p class="sub-title">🔑 What Drives Arrest Prediction? (Feature Importance)</p>', unsafe_allow_html=True)
