@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title("Doing Some Work for you!")
+st.title("Doing the Dirty Work for Your Data!")
 
 # =========================================================
 # SESSION STATE INITIALIZATION
@@ -161,7 +161,7 @@ if df is not None:
     # ---------------------------------------------------------
     st.markdown("#### ✂️ Step 3: Strip Whitespace from String Columns")
 
-    str_cols = cleaning_df.select_dtypes(include=["object", "string"]).columns.tolist()
+    str_cols = cleaning_df.select_dtypes(include="object").columns.tolist()
 
     if not str_cols:
         st.info("No string columns found.")
@@ -183,7 +183,7 @@ if df is not None:
     # ---------------------------------------------------------
     st.markdown("#### 🔡 Step 4: Standardize Text Casing")
 
-    str_cols_now = cleaning_df.select_dtypes(include=["object", "string"]).columns.tolist()
+    str_cols_now = cleaning_df.select_dtypes(include="object").columns.tolist()
 
     if not str_cols_now:
         st.info("No string columns found.")
@@ -364,7 +364,7 @@ if df is not None:
             })
 
         summary_df = pd.DataFrame(outlier_summary)
-        st.dataframe(summary_df, width="stretch")
+        st.dataframe(summary_df, use_container_width=True)
 
         cols_with_outliers = summary_df[summary_df["Outlier Count"] > 0]["Column"].tolist()
 
@@ -474,7 +474,7 @@ if df is not None:
         st.warning("⚠️ Please save your cleaned data to session first before visualizing.")
     else:
         numeric_cols   = viz_df.select_dtypes(include=np.number).columns.tolist()
-        categoric_cols = viz_df.select_dtypes(include=["object", "string", "category"]).columns.tolist()
+        categoric_cols = viz_df.select_dtypes(include=["object", "category"]).columns.tolist()
         all_cols       = viz_df.columns.tolist()
 
         plot_type = st.selectbox(
@@ -718,7 +718,7 @@ if df is not None:
         st.info(f"Working on: **{pre_df.shape[0]} rows × {pre_df.shape[1]} columns**")
 
         numeric_cols   = pre_df.select_dtypes(include=np.number).columns.tolist()
-        categoric_cols = pre_df.select_dtypes(include=["object", "string", "category"]).columns.tolist()
+        categoric_cols = pre_df.select_dtypes(include=["object", "category"]).columns.tolist()
 
         # ---------------------------------------------------------
         # STEP 1 — MIN-MAX SCALING
@@ -847,7 +847,7 @@ if df is not None:
         st.write("Maps each category to an integer. Best for ordinal data with a natural order (e.g. low/medium/high).")
 
         # Refresh categoric cols after OHE may have removed some
-        categoric_cols_now = st.session_state.preprocessed_df.select_dtypes(include=["object", "string", "category"]).columns.tolist()
+        categoric_cols_now = st.session_state.preprocessed_df.select_dtypes(include=["object", "category"]).columns.tolist()
 
         if not categoric_cols_now:
             st.info("No categorical columns remaining.")
